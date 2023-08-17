@@ -22,6 +22,12 @@ func main() {
 		remote = REMOTE_ADDRESS
 	}
 
+	licenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY")
+	if len(licenseKey) == 0 {
+		log.Printf("Please set env var NEW_RELIC_LICENSE_KEY")
+		os.Exit(0)
+	}
+
 	// The / pattern matches everything
 	http.HandleFunc("/", makeHandleAll(remote))
 
