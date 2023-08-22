@@ -9,10 +9,21 @@ import (
 const (
 	LOCAL_ADDRESS  = "localhost:8088"
 	REMOTE_ADDRESS = "localhost:8080"
+	TRACE_ENDPOINT = "https://trace-api.newrelic.com/trace/v1"
 )
 
 func main() {
 
+	account := os.Getenv("NEW_RELIC_ACCOUNT")
+	if len(account) == 0 {
+		log.Printf("Please set env var NEW_RELIC_ACCOUNT")
+		os.Exit(0)
+	}
+	licenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY")
+	if len(licenseKey) == 0 {
+		log.Printf("Please set env var NEW_RELIC_LICENSE_KEY")
+		os.Exit(0)
+	}
 	local := os.Getenv("LOCAL_ADDRESS")
 	if len(local) == 0 {
 		local = LOCAL_ADDRESS
@@ -22,16 +33,12 @@ func main() {
 		remote = REMOTE_ADDRESS
 	}
 
-	licenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY")
-	if len(licenseKey) == 0 {
-		log.Printf("Please set env var NEW_RELIC_LICENSE_KEY")
-		os.Exit(0)
-	}
+	// HTTP client for Trace API
+	traceClient := makeClient(licenseKey, TRACE_ENDPOINT, account)
 
 	// The / pattern matches everything
-	http.HandleFunc("/", makeHandleAll(remote))
+	http.HandleFunc("/", makeHandleAll(remote, traceClient))
 
-	addr := LOCAL_ADDRESS
-	log.Printf("Server listening at %s", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Printf("Local Server at %s", local)
+	log.Fatal(http.ListenAndServe(local, nil))
 }
