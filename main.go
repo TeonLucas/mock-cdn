@@ -19,10 +19,18 @@ func main() {
 		log.Printf("Please set env var NEW_RELIC_ACCOUNT")
 		os.Exit(0)
 	}
+	poa := os.Getenv("NEW_RELIC_POA")
+	if len(account) == 0 {
+		poa = account
+	}
 	licenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY")
 	if len(licenseKey) == 0 {
 		log.Printf("Please set env var NEW_RELIC_LICENSE_KEY")
 		os.Exit(0)
+	}
+	traceEndpoint := os.Getenv("TRACE_ENDPOINT")
+	if len(traceEndpoint) == 0 {
+		traceEndpoint = TRACE_ENDPOINT
 	}
 	local := os.Getenv("LOCAL_ADDRESS")
 	if len(local) == 0 {
@@ -34,7 +42,7 @@ func main() {
 	}
 
 	// HTTP client for Trace API
-	traceClient := makeClient(licenseKey, TRACE_ENDPOINT, account)
+	traceClient := makeClient(licenseKey, traceEndpoint, poa, account)
 
 	// The / pattern matches everything
 	http.HandleFunc("/", makeHandleAll(remote, traceClient))

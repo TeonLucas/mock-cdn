@@ -14,7 +14,7 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 	client := http.DefaultClient
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var traceParent, traceState, traceId, spanId, newParentId, newTraceParent, newTraceState string
+		var traceParent, traceState, traceId, spanId, parentId, newTraceParent, newTraceState string
 		var err error
 
 		tStart := time.Now()
@@ -72,13 +72,13 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 		}
 
 		// Make new trace context and set headers
-		traceId, spanId, newParentId, newTraceParent, newTraceState = makeNewContext(traceParent, traceState, apiClient.Account, timestamp)
+		traceId, spanId, parentId, newTraceParent, newTraceState = makeNewContext(traceParent, apiClient.POA, apiClient.Account, timestamp)
 		req.Header.Set("Traceparent", newTraceParent)
 		req.Header.Set("Tracestate", newTraceState)
 
 		// Send traces to NR
 		go func() {
-			traces := makeTrace(spanId, traceId, newParentId, newTraceParent, newTraceState, r.RequestURI, reqURL, r.Method, 200,
+			traces := makeTrace(spanId, traceId, parentId, newTraceParent, newTraceState, r.RequestURI, reqURL, r.Method, 200,
 				tDuration.Milliseconds(), now.UnixMilli())
 			log.Printf("Sending traceparent: %s", newTraceParent)
 			log.Printf("Sending tracestate: %s", newTraceState)

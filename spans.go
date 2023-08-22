@@ -36,6 +36,7 @@ type ApiClient struct {
 	Client  *http.Client
 	Headers []string
 	Url     string
+	POA     string
 	Account string
 }
 
@@ -106,11 +107,12 @@ func makeTrace(id, traceId, parentId, traceParent, traceState, name, url, method
 	return
 }
 
-func makeClient(licenseKey, url, account string) (apiClient ApiClient) {
+func makeClient(licenseKey, url, poa, account string) (apiClient ApiClient) {
 	apiClient.Client = http.DefaultClient
 	apiClient.Headers = []string{"Content-Type:application/json", "Api-Key:" + licenseKey,
 		"Data-Format:newrelic", "Data-Format-Version: 1"}
 	apiClient.Url = url
+	apiClient.POA = poa
 	apiClient.Account = account
 	return
 }
@@ -149,18 +151,7 @@ func parseTraceParent(traceParent string) (traceId, parentId string) {
 	return
 }
 
-var reTraceState = regexp.MustCompile(`\d+@nr=\d-\d-\d+-\d+-(\w+)-.*-\d{13}$`)
-
-func parseTraceState(traceState string) (spanId string) {
-	matches := reTraceState.FindStringSubmatch(traceState)
-	if len(matches) == 2 {
-		spanId = matches[1]
-	}
-	return
-}
-
-func makeNewContext(traceParent, traceState, account, timestamp string) (traceId, spanId, newParentId, newTraceParent, newTraceState string) {
-	var parentId string
+func makeNewContext(traceParent, poa, account, timestamp string) (traceId, spanId, parentId, newTraceParent, newTraceState string) {
 	var err error
 
 	// Generate spanId
@@ -173,19 +164,18 @@ func makeNewContext(traceParent, traceState, account, timestamp string) (traceId
 	if len(traceParent) > 0 {
 		// Parse traceparent
 		traceId, parentId = parseTraceParent(traceParent)
-
-		// Parse tracestate
-		newParentId = parseTraceState(traceState)
-		log.Printf("Received parent id %s, span id %s", parentId, newParentId)
+		log.Printf("Received parent id %s", parentId)
 	} else {
 		// Generate traceId
 		traceId, err = randomHex(16)
 		if err != nil {
 			log.Println("Error making trace id")
 		}
+		// Use this span as the parent, since there was no caller sending context
+		parentId = spanId
 	}
 
 	newTraceParent = "00-" + traceId + "-" + spanId + "-01"
-	newTraceState = account + "@nr=0-0-" + account + "-0-" + spanId + "--1--" + timestamp
+	newTraceState = poa + "@nr=0-0-" + account + "-0-" + spanId + "--1--" + timestamp
 	return
 }
