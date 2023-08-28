@@ -33,11 +33,12 @@ type Span struct {
 }
 
 type ApiClient struct {
-	Client  *http.Client
-	Headers []string
-	Url     string
-	POA     string
-	Account string
+	Client      *http.Client
+	Headers     []string
+	Url         string
+	POA         string
+	Account     string
+	ServiceName string
 }
 
 // Make API request with error retry
@@ -80,12 +81,12 @@ func retryQuery(client *http.Client, method, url, data string, headers []string)
 	return
 }
 
-func makeTrace(id, traceId, parentId, traceParent, traceState, name, url, method string, status int, duration, ts int64) (traces []Trace) {
+func makeTrace(id, traceId, parentId, traceParent, traceState, name, serviceName, url, method string, status int, duration, ts int64) (traces []Trace) {
 	var trace Trace
 	var span Span
 
 	trace.Common.Attributes = make(Attributes)
-	trace.Common.Attributes["service.name"] = "Mock CDN"
+	trace.Common.Attributes["service.name"] = serviceName
 	trace.Common.Attributes["tags.serviceType"] = "OpenTelemetry"
 	trace.Common.Attributes["hostname"] = "ip-172-31-34-242.us-east-2.compute.internal"
 
@@ -102,18 +103,21 @@ func makeTrace(id, traceId, parentId, traceParent, traceState, name, url, method
 	span.Attributes["http.method"] = method
 	span.Attributes["http.statusCode"] = status
 
+	//span.Attributes["error.message"] = "No error"
+
 	trace.Spans = append(trace.Spans, span)
 	traces = append(traces, trace)
 	return
 }
 
-func makeClient(licenseKey, url, poa, account string) (apiClient ApiClient) {
+func makeClient(licenseKey, url, poa, account, serviceName string) (apiClient ApiClient) {
 	apiClient.Client = http.DefaultClient
 	apiClient.Headers = []string{"Content-Type:application/json", "Api-Key:" + licenseKey,
 		"Data-Format:newrelic", "Data-Format-Version: 1"}
 	apiClient.Url = url
 	apiClient.POA = poa
 	apiClient.Account = account
+	apiClient.ServiceName = serviceName
 	return
 }
 
@@ -128,8 +132,8 @@ func (apiClient ApiClient) sendTraces(traces []Trace) {
 
 	//log.Printf("DEBUG trace payload: %s", j)
 
-	b := retryQuery(apiClient.Client, "POST", apiClient.Url, string(j), apiClient.Headers)
-	log.Printf("Submitted OTel trace %s", b)
+	_ = retryQuery(apiClient.Client, "POST", apiClient.Url, string(j), apiClient.Headers)
+	log.Printf("Submitted OTel trace to %s: %s", apiClient.Url, j)
 }
 
 func randomHex(n int) (string, error) {

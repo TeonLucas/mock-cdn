@@ -10,6 +10,7 @@ const (
 	LOCAL_ADDRESS  = "localhost:8088"
 	REMOTE_ADDRESS = "localhost:8080"
 	TRACE_ENDPOINT = "https://trace-api.newrelic.com/trace/v1"
+	SERVICE_NAME   = "Mock CDN"
 )
 
 func main() {
@@ -28,9 +29,13 @@ func main() {
 		log.Printf("Please set env var NEW_RELIC_LICENSE_KEY")
 		os.Exit(0)
 	}
-	traceEndpoint := os.Getenv("TRACE_ENDPOINT")
+	traceEndpoint := os.Getenv("SERVICE_NAME")
 	if len(traceEndpoint) == 0 {
 		traceEndpoint = TRACE_ENDPOINT
+	}
+	serviceName := os.Getenv("SERVICE_NAME")
+	if len(serviceName) == 0 {
+		serviceName = SERVICE_NAME
 	}
 	local := os.Getenv("LOCAL_ADDRESS")
 	if len(local) == 0 {
@@ -42,7 +47,7 @@ func main() {
 	}
 
 	// HTTP client for Trace API
-	traceClient := makeClient(licenseKey, traceEndpoint, poa, account)
+	traceClient := makeClient(licenseKey, traceEndpoint, poa, account, serviceName)
 
 	// The / pattern matches everything
 	http.HandleFunc("/", makeHandleAll(remote, traceClient))

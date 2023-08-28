@@ -38,35 +38,27 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 		timestamp := fmt.Sprintf("%d", now.UnixMilli())
 		tDuration := now.Sub(tStart)
 
-		// Copy select headers
+		// Copy headers to relayed request (except W3C trace context)
 		for key, values := range r.Header {
-			if strings.ToLower(key) == "newrelic" {
+			keyLC := strings.ToLower(key)
+			if strings.Contains(keyLC, "trace") {
 				if len(values) != 1 {
 					log.Printf("Error: %s has %d values", key, len(values))
 					continue
 				}
-				log.Printf("%s: %s", key, values[0])
-			} else if strings.ToLower(key) == "accept" || strings.ToLower(key) == "user-agent" ||
-				strings.ToLower(key) == "content-length" {
-				log.Printf("%s: %s", key, strings.Join(values, "; "))
-				if len(values) > 0 {
-					req.Header.Set(key, values[0])
-				}
-			} else if strings.Contains(strings.ToLower(key), "trace") {
-				if len(values) != 1 {
-					log.Printf("Error: %s has %d values", key, len(values))
-					continue
-				}
-				if strings.Contains(strings.ToLower(key), "parent") {
+				if strings.Contains(keyLC, "parent") {
 					traceParent = values[0]
 					log.Printf("Received %s: %s", key, traceParent)
-				} else if strings.Contains(strings.ToLower(key), "state") {
+				} else if strings.Contains(keyLC, "state") {
 					traceState = values[0]
 					log.Printf("Received %s: %s", key, traceState)
 				}
-			} else if strings.ToLower(key) == "cookie" {
-				if len(values) > 0 {
-					req.Header.Set(key, values[0])
+			} else {
+				if keyLC == "newrelic" || keyLC == "user-agent" || keyLC == "content-length" {
+					log.Printf("%s: %s", key, strings.Join(values, "; "))
+				}
+				for _, v := range values {
+					req.Header.Set(key, v)
 				}
 			}
 		}
@@ -78,8 +70,8 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 
 		// Send traces to NR
 		go func() {
-			traces := makeTrace(spanId, traceId, parentId, newTraceParent, newTraceState, r.RequestURI, reqURL, r.Method, 200,
-				tDuration.Milliseconds(), now.UnixMilli())
+			traces := makeTrace(spanId, traceId, parentId, newTraceParent, newTraceState, r.RequestURI, apiClient.ServiceName,
+				reqURL, r.Method, 200, tDuration.Milliseconds(), now.UnixMilli())
 			log.Printf("Sending traceparent: %s", newTraceParent)
 			log.Printf("Sending tracestate: %s", newTraceState)
 			apiClient.sendTraces(traces)
