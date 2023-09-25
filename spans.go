@@ -33,12 +33,13 @@ type Span struct {
 }
 
 type ApiClient struct {
-	Client      *http.Client
-	Headers     []string
-	Url         string
-	POA         string
-	Account     string
-	ServiceName string
+	Client              *http.Client
+	Headers             []string
+	Url                 string
+	POA                 string
+	Account             string
+	ServiceName         string
+	NrTracestateEnabled bool
 }
 
 // Make API request with error retry
@@ -110,7 +111,7 @@ func makeTrace(id, traceId, parentId, traceParent, traceState, name, serviceName
 	return
 }
 
-func makeClient(licenseKey, url, poa, account, serviceName string) (apiClient ApiClient) {
+func makeClient(licenseKey, url, poa, account, serviceName string, nrTracestateEnabled bool) (apiClient ApiClient) {
 	apiClient.Client = http.DefaultClient
 	apiClient.Headers = []string{"Content-Type:application/json", "Api-Key:" + licenseKey,
 		"Data-Format:newrelic", "Data-Format-Version: 1"}
@@ -118,6 +119,7 @@ func makeClient(licenseKey, url, poa, account, serviceName string) (apiClient Ap
 	apiClient.POA = poa
 	apiClient.Account = account
 	apiClient.ServiceName = serviceName
+	apiClient.NrTracestateEnabled = nrTracestateEnabled
 	return
 }
 
@@ -155,7 +157,7 @@ func parseTraceParent(traceParent string) (traceId, parentId string) {
 	return
 }
 
-func makeNewContext(traceParent, poa, account, timestamp string) (traceId, spanId, parentId, newTraceParent, newTraceState string) {
+func (apiClient *ApiClient) makeNewContext(traceParent, traceState, timestamp string) (traceId, spanId, parentId, newTraceParent, newTraceState string) {
 	var err error
 
 	// Generate spanId
@@ -180,6 +182,17 @@ func makeNewContext(traceParent, poa, account, timestamp string) (traceId, spanI
 	}
 
 	newTraceParent = "00-" + traceId + "-" + spanId + "-01"
-	newTraceState = poa + "@nr=0-0-" + account + "-0-" + spanId + "--1--" + timestamp
+
+	if apiClient.NrTracestateEnabled {
+		// Mimic NR APM agent, generate NR style tracestate
+		newTraceState = apiClient.POA + "@nr=0-0-" + apiClient.Account + "-0-" + spanId + "--1--" + timestamp
+	} else {
+		// Pass NR tracestate along as an OTel service would
+		if len(traceState) > 0 {
+			newTraceState = "mock=" + spanId + "," + traceState
+		} else {
+			newTraceState = "mock=" + spanId
+		}
+	}
 	return
 }

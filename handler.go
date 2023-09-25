@@ -64,7 +64,7 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 		}
 
 		// Make new trace context and set headers
-		traceId, spanId, parentId, newTraceParent, newTraceState = makeNewContext(traceParent, apiClient.POA, apiClient.Account, timestamp)
+		traceId, spanId, parentId, newTraceParent, newTraceState = apiClient.makeNewContext(traceParent, traceState, timestamp)
 		req.Header.Set("Traceparent", newTraceParent)
 		req.Header.Set("Tracestate", newTraceState)
 

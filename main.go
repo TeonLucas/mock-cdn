@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -45,9 +46,14 @@ func main() {
 	if len(remote) == 0 {
 		remote = REMOTE_ADDRESS
 	}
+	var nrTracestateEnabled bool
+	nrTracestate := strings.ToLower(os.Getenv("NEW_RELIC_TRACESTATE"))
+	if nrTracestate == "1" || nrTracestate == "true" {
+		nrTracestateEnabled = true
+	}
 
 	// HTTP client for Trace API
-	traceClient := makeClient(licenseKey, traceEndpoint, poa, account, serviceName)
+	traceClient := makeClient(licenseKey, traceEndpoint, poa, account, serviceName, nrTracestateEnabled)
 
 	// The / pattern matches everything
 	http.HandleFunc("/", makeHandleAll(remote, traceClient))
