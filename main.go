@@ -58,6 +58,7 @@ func main() {
 	// The / pattern matches everything
 	http.HandleFunc("/", makeHandleAll(remote, traceClient))
 
+	log.Printf("Remote Server at %s", remote)
 	log.Printf("Local Server at %s", local)
 	log.Fatal(http.ListenAndServe(local, nil))
 }
