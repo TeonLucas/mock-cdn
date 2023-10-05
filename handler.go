@@ -89,6 +89,11 @@ func makeHandleAll(remote string, apiClient ApiClient) func(w http.ResponseWrite
 			if err != nil {
 				log.Printf("Error: could not read remote response body %v", err)
 			} else {
+				for key, values := range resp.Header {
+					for _, v := range values {
+						w.Header().Set(key, v)
+					}
+				}
 				log.Printf("Forwarding %s %s %d bytes", r.Method, reqURL, len(body))
 				_, err = w.Write(body)
 				if err != nil {
